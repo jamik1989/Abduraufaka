@@ -73,9 +73,9 @@ def append_visit_rows(data, agent, photo_links):
         data["stand_code"],
         data["client_comment"],
         data["conclusion"],
-        f'=HYPERLINK("{photo_links[0]}","Фото стенда")' if len(photo_links) > 0 and photo_links[0] else "",
-        f'=HYPERLINK("{photo_links[1]}","Фото махсулот")' if len(photo_links) > 1 and photo_links[1] else "",
-        f'=HYPERLINK("{photo_links[2]}","Фото ташкари")' if len(photo_links) > 2 and photo_links[2] else "",
+        f'=HYPERLINK("{photo_links[0]}";"Фото стенда")' if len(photo_links) > 0 and photo_links[0] else "",
+        f'=HYPERLINK("{photo_links[1]}";"Фото махсулот")' if len(photo_links) > 1 and photo_links[1] else "",
+        f'=HYPERLINK("{photo_links[2]}";"Фото ташкари")' if len(photo_links) > 2 and photo_links[2] else "",
         agent.full_name,
         agent.phone,
     ]
