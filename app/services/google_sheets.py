@@ -1,22 +1,36 @@
 ﻿import os
+import json
+import tempfile
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 from app.config import settings
 
 
+def get_creds_file_path():
+    json_content = os.getenv("GOOGLE_CREDS_JSON_CONTENT", "").strip()
+
+    if json_content:
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w", encoding="utf-8")
+        tmp.write(json_content)
+        tmp.close()
+        return tmp.name
+
+    return settings.google_creds_json
+
+
 def get_sheet():
-    if not os.path.exists(settings.google_creds_json):
+    creds_path = get_creds_file_path()
+
+    if not creds_path or not os.path.exists(creds_path):
         return None
 
     scope = [
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/drive",
     ]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(
-        settings.google_creds_json,
-        scope
-    )
+
+    creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
     client = gspread.authorize(creds)
     sh = client.open(settings.google_sheet_name)
 
@@ -30,7 +44,7 @@ def get_sheet():
             "Адрес",
             "Ориентир",
             "Код клиента",
-            "Последняя прибытья аналитика",
+            "Последний прибытия торгового агента",
             "Код стенда",
             "Комментарии от клиента",
             "Заключение",
@@ -59,9 +73,9 @@ def append_visit_rows(data, agent, photo_links):
         data["stand_code"],
         data["client_comment"],
         data["conclusion"],
-        f'=HYPERLINK("{photo_links[0]}";"Фото стенда")' if len(photo_links) > 0 and photo_links[0] else "",
-        f'=HYPERLINK("{photo_links[1]}";"Фото махсулот")' if len(photo_links) > 1 and photo_links[1] else "",
-        f'=HYPERLINK("{photo_links[2]}";"Фото ташкари")' if len(photo_links) > 2 and photo_links[2] else "",
+        f'=HYPERLINK("{photo_links[0]}","Фото стенда")' if len(photo_links) > 0 and photo_links[0] else "",
+        f'=HYPERLINK("{photo_links[1]}","Фото махсулот")' if len(photo_links) > 1 and photo_links[1] else "",
+        f'=HYPERLINK("{photo_links[2]}","Фото ташкари")' if len(photo_links) > 2 and photo_links[2] else "",
         agent.full_name,
         agent.phone,
     ]
