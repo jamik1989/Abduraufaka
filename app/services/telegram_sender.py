@@ -20,7 +20,7 @@ async def send_visit_to_group(bot, payload, agent):
         f"1. Адрес: {payload['address']}\n"
         f"2. Код клиента: {payload['client_code']}\n"
         f"3. Ориентир: {payload['landmark']}\n"
-        f"4. Последняя прибытья аналитика: {payload['last_visit_date']}\n"
+        f"4. Последний прибытия торгового агента: {payload['last_visit_date']}\n"
         f"5. Код стенда: {payload['stand_code']}\n"
         f"6. Комментария от клиента: {payload['client_comment']}\n"
         f"7. Заключение: {payload['conclusion']}\n"
