@@ -1,4 +1,5 @@
-﻿from aiogram import Router, F
+﻿import asyncio
+from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from datetime import datetime
@@ -62,6 +63,31 @@ async def handle_menu_interrupt(message: Message, state: FSMContext) -> bool:
     return False
 
 
+async def finalize_background(bot, report_data, photos_payload, agent):
+    photo_links = ["", "", ""]
+
+    try:
+        group_ok, group_msg, photo_links = await send_visit_to_group(
+            bot=bot,
+            payload={**report_data, **photos_payload},
+            agent=agent,
+        )
+        print("GROUP RESULT:", group_ok, group_msg)
+    except Exception as e:
+        print("GROUP ERROR:", e)
+
+    try:
+        sheet_ok, sheet_msg = await asyncio.to_thread(
+            append_visit_rows,
+            report_data,
+            agent,
+            photo_links,
+        )
+        print("SHEETS RESULT:", sheet_ok, sheet_msg)
+    except Exception as e:
+        print("SHEETS ERROR:", e)
+
+
 @router.message(F.text.contains("Bugungi hisobot"))
 async def today_report(message: Message, state: FSMContext):
     await handle_menu_interrupt(message, state)
@@ -82,7 +108,6 @@ async def new_visit_start(message: Message, state: FSMContext):
 
     current_state = await state.get_state()
 
-    # Agar forma allaqachon boshlangan bo'lsa, qayta bosishni ignore qilamiz
     if current_state is not None:
         return
 
@@ -239,29 +264,23 @@ async def send_visit(callback: CallbackQuery, state: FSMContext, bot):
         "time_str": now.strftime("%H:%M"),
     }
 
-    group_ok, _, photo_links = await send_visit_to_group(
-        bot=bot,
-        payload={
-            **report_data,
-            "stand_photo": data["stand_photo"],
-            "product_photo": data["product_photo"],
-            "outside_photo": data["outside_photo"],
-        },
-        agent=agent,
-    )
+    photos_payload = {
+        "stand_photo": data["stand_photo"],
+        "product_photo": data["product_photo"],
+        "outside_photo": data["outside_photo"],
+    }
 
-    sheet_ok, _ = append_visit_rows(report_data, agent, photo_links)
-    today_count = count_today_visits_for_agent(agent.id)
+    today_count = count_today_visits_for_agent(agent.id) + 1
 
-    result_text = (
-        "✅ Ma'lumot yuborildi.\n\n"
+    await callback.message.edit_text(
+        "✅ Qabul qilindi.\n\n"
         f"📍 Адрес: {report_data['address']}\n"
-        f"📊 Bugungi TT soni: {today_count}\n"
-        f"📨 Guruh: {'OK' if group_ok else 'Xato'}\n"
-        f"📄 Sheets: {'OK' if sheet_ok else 'Xato'}"
+        f"📊 Bugungi TT soni: {today_count}\n\n"
+        "Guruh va Sheets ga yuborilmoqda..."
     )
-
-    await callback.message.edit_text(result_text)
     await callback.message.answer("Asosiy menyu", reply_markup=main_menu())
+
     await state.clear()
     await callback.answer()
+
+    asyncio.create_task(finalize_background(bot, report_data, photos_payload, agent))

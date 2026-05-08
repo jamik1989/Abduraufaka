@@ -1,5 +1,6 @@
 ﻿import os
 import json
+import time
 import tempfile
 import logging
 import gspread
@@ -44,70 +45,73 @@ def get_sheet():
     if not creds_path:
         return None
 
-    try:
-        scope = [
-            "https://spreadsheets.google.com/feeds",
-            "https://www.googleapis.com/auth/drive",
-        ]
-        creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
-        client = gspread.authorize(creds)
-        sh = client.open(settings.google_sheet_name)
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive",
+    ]
 
+    creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
+    client = gspread.authorize(creds)
+    sh = client.open(settings.google_sheet_name)
+
+    try:
+        ws = sh.worksheet("Data")
+    except Exception:
+        ws = sh.add_worksheet(title="Data", rows=2000, cols=30)
+        ws.append_row([
+            "Сана",
+            "Вақт",
+            "Адрес",
+            "Ориентир",
+            "Код клиента",
+            "Последний прибытия торгового агента",
+            "Код стенда",
+            "Комментарии от клиента",
+            "Заключение",
+            "Фото стенда",
+            "Фото махсулот",
+            "Фото ташкари",
+            "Аналитик номи",
+            "Аналитик номери",
+        ])
+
+    return ws
+
+
+def append_visit_rows(data, agent, photo_links, retries=3, delay=2):
+    last_error = None
+
+    for attempt in range(1, retries + 1):
         try:
-            ws = sh.worksheet("Data")
-        except Exception:
-            ws = sh.add_worksheet(title="Data", rows=2000, cols=30)
-            ws.append_row([
-                "Сана",
-                "Вақт",
-                "Адрес",
-                "Ориентир",
-                "Код клиента",
-                "Последний прибытия торгового агента",
-                "Код стенда",
-                "Комментарии от клиента",
-                "Заключение",
-                "Фото стенда",
-                "Фото махсулот",
-                "Фото ташкари",
-                "Аналитик номи",
-                "Аналитик номери",
-            ])
+            ws = get_sheet()
+            if ws is None:
+                return False, "Google Sheets ulanmadi"
 
-        return ws
+            row = [
+                data["date_str"],
+                data["time_str"],
+                data["address"],
+                data["landmark"],
+                data["client_code"],
+                data["last_visit_date"],
+                data["stand_code"],
+                data["client_comment"],
+                data["conclusion"],
+                f'=HYPERLINK("{photo_links[0]}";"Фото стенда")' if len(photo_links) > 0 and photo_links[0] else "",
+                f'=HYPERLINK("{photo_links[1]}";"Фото махсулот")' if len(photo_links) > 1 and photo_links[1] else "",
+                f'=HYPERLINK("{photo_links[2]}";"Фото ташкари")' if len(photo_links) > 2 and photo_links[2] else "",
+                agent.full_name,
+                agent.phone,
+            ]
 
-    except Exception as e:
-        logger.exception("Google Sheets open failed: %s", e)
-        return None
+            ws.append_row(row, value_input_option="USER_ENTERED")
+            logger.info("Google Sheets row appended successfully on attempt %s", attempt)
+            return True, "ok"
 
+        except Exception as e:
+            last_error = str(e)
+            logger.exception("append_visit_rows failed on attempt %s: %s", attempt, e)
+            if attempt < retries:
+                time.sleep(delay)
 
-def append_visit_rows(data, agent, photo_links):
-    try:
-        ws = get_sheet()
-        if ws is None:
-            return False, "Google Sheets ulanmadi"
-
-        row = [
-            data["date_str"],
-            data["time_str"],
-            data["address"],
-            data["landmark"],
-            data["client_code"],
-            data["last_visit_date"],
-            data["stand_code"],
-            data["client_comment"],
-            data["conclusion"],
-            f'=HYPERLINK("{photo_links[0]}";"Фото стенда")' if len(photo_links) > 0 and photo_links[0] else "",
-            f'=HYPERLINK("{photo_links[1]}";"Фото махсулот")' if len(photo_links) > 1 and photo_links[1] else "",
-            f'=HYPERLINK("{photo_links[2]}";"Фото ташкари")' if len(photo_links) > 2 and photo_links[2] else "",
-            agent.full_name,
-            agent.phone,
-        ]
-
-        ws.append_row(row, value_input_option="USER_ENTERED")
-        logger.info("Google Sheets row appended successfully")
-        return True, "ok"
-
-    except Exception as e:
-        logger.exception("append_visit_rows failed: %s", e)
-        return False, str(e)
+    return False, last_error or "unknown error"
