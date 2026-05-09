@@ -57,22 +57,24 @@ def get_sheet():
     try:
         ws = sh.worksheet("Data")
     except Exception:
-        ws = sh.add_worksheet(title="Data", rows=2000, cols=30)
+        ws = sh.add_worksheet(title="Data", rows=3000, cols=30)
         ws.append_row([
             "Сана",
             "Вақт",
             "Адрес",
             "Ориентир",
             "Код клиента",
-            "Последний прибытия торгового агента",
+            "Посл приб аналитика",
             "Код стенда",
-            "Комментарии от клиента",
+            "Комментарии",
             "Заключение",
             "Фото стенда",
-            "Фото махсулот",
-            "Фото ташкари",
-            "Аналитик номи",
+            "Фото маҳсулот",
+            "Фото ташқари",
+            "Аналитик исми",
             "Аналитик номери",
+            "Рм маълумоти",
+            "Дата решения",
         ])
 
     return ws
@@ -98,10 +100,12 @@ def append_visit_rows(data, agent, photo_links, retries=3, delay=2):
                 data["client_comment"],
                 data["conclusion"],
                 f'=HYPERLINK("{photo_links[0]}";"Фото стенда")' if len(photo_links) > 0 and photo_links[0] else "",
-                f'=HYPERLINK("{photo_links[1]}";"Фото махсулот")' if len(photo_links) > 1 and photo_links[1] else "",
-                f'=HYPERLINK("{photo_links[2]}";"Фото ташкари")' if len(photo_links) > 2 and photo_links[2] else "",
+                f'=HYPERLINK("{photo_links[1]}";"Фото маҳсулот")' if len(photo_links) > 1 and photo_links[1] else "",
+                f'=HYPERLINK("{photo_links[2]}";"Фото ташқари")' if len(photo_links) > 2 and photo_links[2] else "",
                 agent.full_name,
                 agent.phone,
+                "",
+                "",
             ]
 
             ws.append_row(row, value_input_option="USER_ENTERED")

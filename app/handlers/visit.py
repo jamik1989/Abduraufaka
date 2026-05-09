@@ -13,7 +13,7 @@ from app.database.crud import (
 )
 from app.keyboards.inline import confirm_visit_kb
 from app.keyboards.reply import main_menu
-from app.services.panel_sender import send_report_to_panel
+from app.services.google_sheets import append_visit_rows
 from app.services.telegram_sender import send_visit_to_group
 from app.states import VisitStates
 
@@ -77,15 +77,15 @@ async def finalize_background(bot, report_data, photos_payload, agent):
         print("GROUP ERROR:", e)
 
     try:
-        panel_ok, panel_msg = await asyncio.to_thread(
-            send_report_to_panel,
+        sheet_ok, sheet_msg = await asyncio.to_thread(
+            append_visit_rows,
             report_data,
             agent,
             photo_links,
         )
-        print("PANEL RESULT:", panel_ok, panel_msg)
+        print("SHEETS RESULT:", sheet_ok, sheet_msg)
     except Exception as e:
-        print("PANEL ERROR:", e)
+        print("SHEETS ERROR:", e)
 
 
 @router.message(F.text.contains("Bugungi hisobot"))
@@ -183,7 +183,7 @@ async def get_conclusion(message: Message, state: FSMContext):
 async def get_stand_photo(message: Message, state: FSMContext):
     await state.update_data(stand_photo=message.photo[-1].file_id)
     await state.set_state(VisitStates.waiting_product_photo)
-    await message.answer("Фото махсулот:")
+    await message.answer("Фото маҳсулот:")
 
 
 @router.message(VisitStates.waiting_stand_photo)
@@ -197,7 +197,7 @@ async def get_stand_photo_invalid(message: Message, state: FSMContext):
 async def get_product_photo(message: Message, state: FSMContext):
     await state.update_data(product_photo=message.photo[-1].file_id)
     await state.set_state(VisitStates.waiting_outside_photo)
-    await message.answer("Фото ташкари:")
+    await message.answer("Фото ташқари:")
 
 
 @router.message(VisitStates.waiting_product_photo)
@@ -276,7 +276,7 @@ async def send_visit(callback: CallbackQuery, state: FSMContext, bot):
         "✅ Qabul qilindi.\n\n"
         f"📍 Адрес: {report_data['address']}\n"
         f"📊 Bugungi TT soni: {today_count}\n\n"
-        "Guruh va Panelga yuborilmoqda..."
+        "Guruh va Google Sheets ga yuborilmoqda..."
     )
     await callback.message.answer("Asosiy menyu", reply_markup=main_menu())
 
