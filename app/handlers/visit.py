@@ -13,7 +13,7 @@ from app.database.crud import (
 )
 from app.keyboards.inline import confirm_visit_kb
 from app.keyboards.reply import main_menu
-from app.services.google_sheets import append_visit_rows
+from app.services.panel_sender import send_report_to_panel
 from app.services.telegram_sender import send_visit_to_group
 from app.states import VisitStates
 
@@ -77,15 +77,15 @@ async def finalize_background(bot, report_data, photos_payload, agent):
         print("GROUP ERROR:", e)
 
     try:
-        sheet_ok, sheet_msg = await asyncio.to_thread(
-            append_visit_rows,
+        panel_ok, panel_msg = await asyncio.to_thread(
+            send_report_to_panel,
             report_data,
             agent,
             photo_links,
         )
-        print("SHEETS RESULT:", sheet_ok, sheet_msg)
+        print("PANEL RESULT:", panel_ok, panel_msg)
     except Exception as e:
-        print("SHEETS ERROR:", e)
+        print("PANEL ERROR:", e)
 
 
 @router.message(F.text.contains("Bugungi hisobot"))
@@ -276,7 +276,7 @@ async def send_visit(callback: CallbackQuery, state: FSMContext, bot):
         "✅ Qabul qilindi.\n\n"
         f"📍 Адрес: {report_data['address']}\n"
         f"📊 Bugungi TT soni: {today_count}\n\n"
-        "Guruh va Sheets ga yuborilmoqda..."
+        "Guruh va Panelga yuborilmoqda..."
     )
     await callback.message.answer("Asosiy menyu", reply_markup=main_menu())
 
