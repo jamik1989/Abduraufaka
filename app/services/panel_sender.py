@@ -1,11 +1,21 @@
 import os
 import requests
+from datetime import datetime
 
 
 def send_report_to_panel(report_data, agent, photo_links):
     panel_api_url = os.getenv("PANEL_API_URL", "").strip()
     if not panel_api_url:
         return False, "PANEL_API_URL kiritilmagan"
+
+    created_at = None
+    try:
+        created_at = datetime.strptime(
+            f"{report_data['date_str']} {report_data['time_str']}",
+            "%d.%m.%Y %H:%M"
+        ).isoformat()
+    except Exception:
+        created_at = None
 
     payload = {
         "agent_name": agent.full_name,
@@ -17,7 +27,7 @@ def send_report_to_panel(report_data, agent, photo_links):
         "stand_code": report_data["stand_code"],
         "client_comment": report_data["client_comment"],
         "conclusion": report_data["conclusion"],
-        "created_at": None,
+        "created_at": created_at,
         "photos": [
             {
                 "photo_type": "stand",
